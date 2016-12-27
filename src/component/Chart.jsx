@@ -1,7 +1,7 @@
 import React from 'react';
 import Highcharts from 'highcharts';
 import { abs } from 'mathjs';
-import { throttle } from 'underscore';
+import { throttle, isNull } from 'underscore';
 
 import { fetchJSON, getMadSerie, flat } from '../lib';
 
@@ -22,7 +22,7 @@ class Chart extends React.Component {
     this.fetch();
     this.markOutlierDelayed = throttle((...args) => {
       this.markOutlier(...args);
-    }, 1000);
+    }, 100);
   }
 
   componentWillReceiveProps(newProps) {
@@ -55,7 +55,7 @@ class Chart extends React.Component {
             data: flat(item.pointlist)
           }
         );
-        const trimData = res.map(toSeries);
+        const trimData = res.slice(0, 5).map(toSeries);
         const madSerie = getMadSerie(trimData);
         trimData.forEach((serie) => {
           this.chart.addSeries(serie, false);
@@ -78,15 +78,15 @@ class Chart extends React.Component {
     tolerance,
     pct
   } = this.props) {
+    const mad = this.hMadSerie.userOptions.mad;
     const madSerieData = this.hMadSerie.yData;
-    const madSerieDataLength = madSerieData.length;
     this.chart.series.forEach((serie) => {
       if (serie === this.hMadSerie) {
         return;
       }
       if (serie === this.hRangeSerie) {
-        const newRan = this.hMadSerie.userOptions.data.map(([timestamp, mad]) => ([
-          timestamp, mad - tolerance, mad + tolerance
+        const newRan = this.hMadSerie.userOptions.data.map(([timestamp, m]) => ([
+          timestamp, m - (mad * tolerance), m + (mad * tolerance)
         ]));
         this.hRangeSerie.update({
           data: newRan
@@ -94,12 +94,16 @@ class Chart extends React.Component {
         return;
       }
       let count = 0;
+      let serieRealLength = 0;
       serie.yData.forEach((d, i) => {
-        if (abs(madSerieData[i] - d) > tolerance) {
-          count++;
+        if (!isNull(d)) {
+          serieRealLength++;
+          if (abs(madSerieData[i] - d) > mad * tolerance) {
+            count++;
+          }
         }
       });
-      const itemOutlierPercentage = 100 * (count / madSerieDataLength);
+      const itemOutlierPercentage = 100 * (count / serieRealLength);
       if (itemOutlierPercentage < pct) {
         if (serie.options.dashStyle !== 'Dot') {
           serie.update({

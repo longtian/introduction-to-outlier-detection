@@ -6,10 +6,9 @@ class App extends React.Component {
   constructor(...args) {
     super(...args);
     this.state = {
-      interval: 60,
       pct: 25,
-      tolerance: 1.5,
-      begin: 3600000
+      tolerance: 3,
+      begin: 86400000
     };
   }
 
@@ -73,9 +72,9 @@ class App extends React.Component {
               <input
                 style={{ width: '80%' }}
                 type="range"
-                min="0"
-                step="0.1"
-                max="50"
+                min="0.1"
+                max="5"
+                step="0.01"
                 value={tolerance}
                 onChange={this.onValueChange('tolerance')}
               />

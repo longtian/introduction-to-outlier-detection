@@ -3,6 +3,11 @@ import $ from 'jquery';
 import { median, abs } from 'mathjs';
 import _ from 'underscore';
 
+/**
+ * 请求后台
+ * @param path
+ * @param params
+ */
 export const fetchJSON = (path, params) => $
   .getJSON(path, params)
   .then((resonse) => {
@@ -10,34 +15,44 @@ export const fetchJSON = (path, params) => $
     return resonse.result;
   });
 
+/**
+ * Median Absolutes Devation
+ * @param data
+ * @returns {*}
+ * @constructor
+ */
 export const MAD = (data) => {
   const medianOfData = median(data);
   return median(data.map(i => abs((i - medianOfData))));
 };
 
-export const getMadSerie = (item) => {
-  const firstItem = _.first(item);
-  const length = firstItem.data.length;
+/**
+ * 返回一个 Highcharts 可用的 Serie
+ * @param series
+ * @returns {{name: string, data: Array, visible: boolean}}
+ */
+export const getMadSerie = (series) => {
+  // 当前时间段内的所有非 Null 值
+  const everyPointValues = _
+    .union(...series.map(i => i.data.map(j => j[1])))
+    .filter(i => !_.isNull(i));
+
+  // 求 MAD
+  const mad = MAD(everyPointValues);
+  const m = median(everyPointValues);
+
+  const firstItem = _.first(series);
   const madSerie = {
     name: 'madSerie',
-    data: [],
+    data: firstItem.data.map(([timestamp]) => ([timestamp, m])),
+    mad,
     visible: false
   };
-  const madSerieData = madSerie.data;
-  for (let j = 0; j < length; j++) {
-    const valuesAtJ = [];
-    let timestime = null;
-    for (let i = 0; i < item.length; i++) {
-      if (item[i].data) {
-        timestime = item[i].data[j][0];
-        valuesAtJ.push(item[i].data[j][1]);
-      }
-    }
-    madSerieData.push(
-      [timestime, MAD(valuesAtJ)]
-    );
-  }
   return madSerie;
 };
 
-export const flat = items => _.map(items, (v, k) => [k * 1000, v]);
+/**
+ * 把 pointlist 转成一个 2 维度数组
+ * @param items
+ */
+export const flat = items => _.map(items, (value, timestamp) => [timestamp * 1000, value]);
