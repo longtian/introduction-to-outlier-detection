@@ -99,11 +99,13 @@ class Chart extends React.Component {
       });
       const itemOutlierPercentage = 100 * (count / madSerieDataLength);
       if (itemOutlierPercentage < pct) {
-        serie.update({
-          dashStyle: 'Dot',
-          color: '#cccccc'
-        }, false);
-      } else {
+        if (serie.options.dashStyle !== 'Dot') {
+          serie.update({
+            dashStyle: 'Dot',
+            color: '#cccccc'
+          }, false);
+        }
+      } else if (serie.options.dashStyle !== 'Solid') {
         serie.update({
           dashStyle: 'Solid',
           color: 'orange'
