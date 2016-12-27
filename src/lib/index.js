@@ -21,21 +21,25 @@ export const getMadSerie = (item) => {
   const madSerie = {
     name: 'madSerie',
     data: [],
-    pointStart: firstItem.pointStart,
-    pointInterval: firstItem.pointInterval,
-    dotStyle: 'Dash'
+    type: 'arearange',
+    zIndex: -1
   };
   const madSerieData = madSerie.data;
   for (let j = 0; j < length; j++) {
     const valuesAtJ = [];
+    let timestime = null;
     for (let i = 0; i < item.length; i++) {
       if (item[i].data) {
-        valuesAtJ.push(item[i].data[j]);
+        timestime = item[i].data[j][0];
+        valuesAtJ.push(item[i].data[j][1]);
       }
     }
+    const mad = MAD(valuesAtJ);
     madSerieData.push(
-      MAD(valuesAtJ)
+      [timestime, mad, mad]
     );
   }
   return madSerie;
 };
+
+export const flat = items => _.map(items, (v, k) => [k * 1000, v]);

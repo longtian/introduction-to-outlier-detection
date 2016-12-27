@@ -68,6 +68,7 @@ class App extends React.Component {
                 type="range"
                 min="0"
                 max="100"
+                step="10"
                 value={pct}
                 onChange={this.onValueChange('pct')}
               />

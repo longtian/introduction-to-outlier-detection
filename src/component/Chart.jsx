@@ -1,14 +1,11 @@
 import React from 'react';
 import Highcharts from 'highcharts';
-import _ from 'underscore';
-import { abs } from 'mathjs';
-
-import { fetchJSON, getMadSerie } from '../lib';
+import { abs, mean } from 'mathjs';
+import { fetchJSON, getMadSerie, flat } from '../lib';
 
 class Chart extends React.Component {
-
   componentDidMount() {
-    this.chart = new Highcharts.Chart({
+    window.c = this.chart = new Highcharts.Chart({
       chart: {
         renderTo: this.container
       },
@@ -19,6 +16,10 @@ class Chart extends React.Component {
     this.fetch();
   }
 
+  componentWillReceiveProps(newProps) {
+    this.markOutlier(newProps);
+  }
+
   componentWillUnmount() {
     this.isUnmounted = true;
   }
@@ -26,65 +27,66 @@ class Chart extends React.Component {
   fetch() {
     const {
       interval,
-      pct,
-      tolerance
     } = this.props;
     fetchJSON('/v1/query.json', {
       q: 'avg:system.load.1{*}by{host}',
-      token: '00dab9eee34944c58fd967fc61fec428',
       interval
     }).then(
       (res) => {
-
         if (this.isUnmounted) {
           return;
         }
-
-        const toSeries = (item) => {
-          const pointStart = _.first(_.keys(item.pointlist)) * 1000;
-          return {
+        const toSeries = item => (
+          {
             name: item.tags.host,
-            data: _.values(item.pointlist),
-            pointStart,
-            pointInterval: interval * 1000,
-          };
-        };
-
-        const markOutlier = (items, madSerie) => {
-          const madSerieData = madSerie.data;
-          const madSerieDataLength = madSerieData.length;
-
-          items.forEach((item) => {
-            let count = 0;
-            item.data.forEach((d, i) => {
-              if (abs(madSerieData[i] - d) > tolerance) {
-                count++;
-              }
-            });
-            const itemOutlierPercentage = 100 * (count / madSerieDataLength);
-            if (itemOutlierPercentage < pct) {
-              item.dashStyle = 'Dot';
-            }
-          });
-
-          items.push(madSerie);
-          return items;
-        };
-
-        const data = res
-          .slice(0, 10)
-          .map(toSeries);
-
-        const madSerie = getMadSerie(data);
-
-        markOutlier(data, madSerie);
-
-        data.forEach((serie) => {
+            data: flat(item.pointlist),
+            color: '#cccccc'
+          }
+        );
+        const trimData = res.slice(3, 10).map(toSeries);
+        const madSerie = getMadSerie(trimData);
+        trimData.forEach((serie) => {
           this.chart.addSeries(serie, false);
         });
-        this.chart.render();
+        this.hMadSerie = this.chart.addSeries(madSerie, false);
+        this.markOutlier();
       }
-    );
+    ).catch((e) => {
+      console.error(e);
+    });
+  }
+
+  markOutlier({
+    tolerance,
+    pct
+  } = this.props) {
+    const madSerieData = this.hMadSerie.yData;
+
+    const madSerieDataLength = madSerieData.length;
+    this.chart.series.forEach((serie) => {
+      if (serie === this.hMadSerie) {
+        return;
+      }
+
+      let count = 0;
+      serie.yData.forEach((d, i) => {
+        if (abs(mean(madSerieData[i]) - d) > tolerance) {
+          count++;
+        }
+      });
+
+      const itemOutlierPercentage = 100 * (count / madSerieDataLength);
+      if (itemOutlierPercentage < pct) {
+        serie.update({
+          dashStyle: 'Dot'
+        }, false);
+      } else {
+        serie.update({
+          dashStyle: 'Solid'
+        }, false);
+      }
+    });
+    this.chart.render();
   }
 
   render() {
