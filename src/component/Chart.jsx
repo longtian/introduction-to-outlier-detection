@@ -1,9 +1,12 @@
 import React from 'react';
 import Highcharts from 'highcharts';
 import { abs } from 'mathjs';
+import { throttle } from 'underscore';
+
 import { fetchJSON, getMadSerie, flat } from '../lib';
 
 class Chart extends React.Component {
+
   componentDidMount() {
     window.c = this.chart = new Highcharts.Chart({
       chart: {
@@ -16,16 +19,15 @@ class Chart extends React.Component {
         text: 'MAD'
       }
     });
-    setTimeout(() => {
-      if (!this.isUnmounted) {
-        this.fetch();
-      }
-    }, 100);
+    this.fetch();
+    this.markOutlierDelayed = throttle((...args) => {
+      this.markOutlier(...args);
+    }, 1000);
   }
 
   componentWillReceiveProps(newProps) {
     if (newProps.pct !== this.props.pct || newProps.tolerance !== this.props.tolerance) {
-      this.markOutlier(newProps);
+      this.markOutlierDelayed(newProps);
     }
   }
 
