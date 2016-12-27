@@ -3,7 +3,7 @@ const autoprefixer = require('autoprefixer');
 module.exports = {
   devtool: 'eval',
   entry: {
-    main: './src/index.js'
+    main: './src/index'
   },
   output: {
     filename: '[name].js',
@@ -18,8 +18,11 @@ module.exports = {
   module: {
     loaders: [
       {
-        test: /\.js$/,
-        loaders: ['babel']
+        test: /\.(js|jsx)$/,
+        loaders: ['babel'],
+        exclude: [
+          'node_modules'
+        ]
       },
       {
         test: /\.less$/,

@@ -13,6 +13,7 @@ module.exports = {
   ],
   "rules": {
     "comma-dangle": 0,
-    "no-plusplus": 0
+    "no-plusplus": 0,
+    "jsx-a11y/label-has-for": 0
   }
 };
