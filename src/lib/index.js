@@ -22,7 +22,8 @@ export const getMadSerie = (item) => {
     name: 'madSerie',
     data: [],
     pointStart: firstItem.pointStart,
-    pointInterval: firstItem.pointInterval
+    pointInterval: firstItem.pointInterval,
+    dotStyle: 'Dash'
   };
   const madSerieData = madSerie.data;
   for (let j = 0; j < length; j++) {
