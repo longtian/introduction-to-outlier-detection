@@ -1,6 +1,6 @@
 import React from 'react';
 import Highcharts from 'highcharts';
-import { abs, mean } from 'mathjs';
+import { abs } from 'mathjs';
 import { fetchJSON, getMadSerie, flat } from '../lib';
 
 class Chart extends React.Component {
@@ -11,13 +11,22 @@ class Chart extends React.Component {
       },
       xAxis: {
         type: 'datetime'
+      },
+      title: {
+        text: 'MAD'
       }
     });
-    this.fetch();
+    setTimeout(() => {
+      if (!this.isUnmounted) {
+        this.fetch();
+      }
+    }, 100);
   }
 
   componentWillReceiveProps(newProps) {
-    this.markOutlier(newProps);
+    if (newProps.pct !== this.props.pct || newProps.tolerance !== this.props.tolerance) {
+      this.markOutlier(newProps);
+    }
   }
 
   componentWillUnmount() {
@@ -39,20 +48,25 @@ class Chart extends React.Component {
         const toSeries = item => (
           {
             name: item.tags.host,
-            data: flat(item.pointlist),
-            color: '#cccccc'
+            data: flat(item.pointlist)
           }
         );
-        const trimData = res.slice(3, 10).map(toSeries);
+        const trimData = res.map(toSeries);
         const madSerie = getMadSerie(trimData);
         trimData.forEach((serie) => {
           this.chart.addSeries(serie, false);
         });
         this.hMadSerie = this.chart.addSeries(madSerie, false);
+        this.hRangeSerie = this.chart.addSeries({
+          data: [],
+          type: 'arearange',
+          zIndex: -1,
+          color: '#eeeeee'
+        }, false);
         this.markOutlier();
       }
     ).catch((e) => {
-      console.error(e);
+      console.error(e); // eslint-disable-line no-console
     });
   }
 
@@ -61,28 +75,36 @@ class Chart extends React.Component {
     pct
   } = this.props) {
     const madSerieData = this.hMadSerie.yData;
-
     const madSerieDataLength = madSerieData.length;
     this.chart.series.forEach((serie) => {
       if (serie === this.hMadSerie) {
         return;
       }
-
+      if (serie === this.hRangeSerie) {
+        const newRan = this.hMadSerie.userOptions.data.map(([timestamp, mad]) => ([
+          timestamp, mad - tolerance, mad + tolerance
+        ]));
+        this.hRangeSerie.update({
+          data: newRan
+        });
+        return;
+      }
       let count = 0;
       serie.yData.forEach((d, i) => {
-        if (abs(mean(madSerieData[i]) - d) > tolerance) {
+        if (abs(madSerieData[i] - d) > tolerance) {
           count++;
         }
       });
-
       const itemOutlierPercentage = 100 * (count / madSerieDataLength);
       if (itemOutlierPercentage < pct) {
         serie.update({
-          dashStyle: 'Dot'
+          dashStyle: 'Dot',
+          color: '#cccccc'
         }, false);
       } else {
         serie.update({
-          dashStyle: 'Solid'
+          dashStyle: 'Solid',
+          color: 'orange'
         }, false);
       }
     });

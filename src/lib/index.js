@@ -21,8 +21,7 @@ export const getMadSerie = (item) => {
   const madSerie = {
     name: 'madSerie',
     data: [],
-    type: 'arearange',
-    zIndex: -1
+    visible: false
   };
   const madSerieData = madSerie.data;
   for (let j = 0; j < length; j++) {
@@ -34,9 +33,8 @@ export const getMadSerie = (item) => {
         valuesAtJ.push(item[i].data[j][1]);
       }
     }
-    const mad = MAD(valuesAtJ);
     madSerieData.push(
-      [timestime, mad, mad]
+      [timestime, MAD(valuesAtJ)]
     );
   }
   return madSerie;

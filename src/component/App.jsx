@@ -28,6 +28,7 @@ class App extends React.Component {
     return (
       <div>
         <Chart
+          key={interval}
           interval={interval}
           pct={pct}
           tolerance={tolerance}
