@@ -7,8 +7,9 @@ class App extends React.Component {
     super(...args);
     this.state = {
       interval: 60,
-      pct: 50,
-      tolerance: 0.2
+      pct: 25,
+      tolerance: 1.5,
+      begin: 3600000
     };
   }
 
@@ -20,42 +21,61 @@ class App extends React.Component {
 
   render() {
     const {
-      interval,
       pct,
-      tolerance
+      tolerance,
+      begin
     } = this.state;
 
     return (
       <div>
         <Chart
-          key={interval}
-          interval={interval}
+          key={begin}
           pct={pct}
           tolerance={tolerance}
+          begin={begin}
         />
         <form>
           <p>
             <label>
-              interval:
+              1小时
               <input
-                type="range"
-                min="10"
-                max="300"
-                step="10"
-                value={interval}
-                onChange={this.onValueChange('interval')}
+                checked={begin === 3600000}
+                type="radio"
+                name="range"
+                onChange={this.onValueChange('begin')}
+                value={3600000}
               />
-              {interval}
+            </label>
+            <label>
+              1天
+              <input
+                checked={begin === 86400000}
+                type="radio"
+                name="range"
+                onChange={this.onValueChange('begin')}
+                value={86400000}
+              />
+            </label>
+            <label>
+              1周
+              <input
+                checked={begin === 604800000}
+                type="radio"
+                name="range"
+                onChange={this.onValueChange('begin')}
+                value={604800000}
+              />
             </label>
           </p>
           <p>
             <label>
               tolerance:
               <input
+                style={{ width: '80%' }}
                 type="range"
                 min="0"
-                max="5"
                 step="0.1"
+                max="50"
                 value={tolerance}
                 onChange={this.onValueChange('tolerance')}
               />
@@ -66,10 +86,10 @@ class App extends React.Component {
             <label>
               pct:
               <input
+                style={{ width: '80%' }}
                 type="range"
                 min="0"
                 max="100"
-                step="10"
                 value={pct}
                 onChange={this.onValueChange('pct')}
               />

@@ -37,11 +37,13 @@ class Chart extends React.Component {
 
   fetch() {
     const {
-      interval,
+      begin
     } = this.props;
     fetchJSON('/v1/query.json', {
-      q: 'avg:system.load.1{*}by{host}',
-      interval
+      q: 'avg:system.load.15{*}by{host}',
+      interval: begin / 60 / 1000,
+      begin,
+      end: Date.now()
     }).then(
       (res) => {
         if (this.isUnmounted) {
@@ -127,7 +129,7 @@ class Chart extends React.Component {
 }
 
 Chart.propTypes = {
-  interval: React.PropTypes.number,
+  begin: React.PropTypes.number,
   pct: React.PropTypes.number,
   tolerance: React.PropTypes.number
 };
