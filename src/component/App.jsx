@@ -8,13 +8,14 @@ class App extends React.Component {
     this.state = {
       pct: 25,
       tolerance: 3,
-      begin: 86400000
+      begin: 86400000,
+      method: 'mad'
     };
   }
 
   onValueChange = field => ({ target: { value } }) => {
     this.setState({
-      [field]: parseFloat(value, 10)
+      [field]: field === 'method' ? value : parseFloat(value, 10)
     });
   }
 
@@ -22,7 +23,8 @@ class App extends React.Component {
     const {
       pct,
       tolerance,
-      begin
+      begin,
+      method
     } = this.state;
 
     return (
@@ -36,7 +38,6 @@ class App extends React.Component {
         <form>
           <p>
             <label>
-              1小时
               <input
                 checked={begin === 3600000}
                 type="radio"
@@ -44,9 +45,9 @@ class App extends React.Component {
                 onChange={this.onValueChange('begin')}
                 value={3600000}
               />
+              1小时
             </label>
             <label>
-              1天
               <input
                 checked={begin === 86400000}
                 type="radio"
@@ -54,9 +55,9 @@ class App extends React.Component {
                 onChange={this.onValueChange('begin')}
                 value={86400000}
               />
+              1天
             </label>
             <label>
-              1周
               <input
                 checked={begin === 604800000}
                 type="radio"
@@ -64,6 +65,30 @@ class App extends React.Component {
                 onChange={this.onValueChange('begin')}
                 value={604800000}
               />
+              1周
+            </label>
+          </p>
+          <hr />
+          <p>
+            <label>
+              <input
+                checked={method === 'mad'}
+                type="radio"
+                name="method"
+                onChange={this.onValueChange('method')}
+                value={'mad'}
+              />
+              MAD
+            </label>
+            <label>
+              <input
+                checked={method === 'dbscan'}
+                type="radio"
+                name="method"
+                onChange={this.onValueChange('method')}
+                value={'dbscan'}
+              />
+              DBSCAN
             </label>
           </p>
           <p>

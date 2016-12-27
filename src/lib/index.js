@@ -1,6 +1,6 @@
 import assert from 'assert';
 import $ from 'jquery';
-import { median, abs } from 'mathjs';
+import { median, abs, mad } from 'mathjs';
 import _ from 'underscore';
 
 /**
@@ -16,17 +16,6 @@ export const fetchJSON = (path, params) => $
   });
 
 /**
- * Median Absolutes Devation
- * @param data
- * @returns {*}
- * @constructor
- */
-export const MAD = (data) => {
-  const medianOfData = median(data);
-  return median(data.map(i => abs((i - medianOfData))));
-};
-
-/**
  * 返回一个 Highcharts 可用的 Serie
  * @param series
  * @returns {{name: string, data: Array, visible: boolean}}
@@ -38,14 +27,13 @@ export const getMadSerie = (series) => {
     .filter(i => !_.isNull(i));
 
   // 求 MAD
-  const mad = MAD(everyPointValues);
   const m = median(everyPointValues);
 
   const firstItem = _.first(series);
   const madSerie = {
     name: 'madSerie',
     data: firstItem.data.map(([timestamp]) => ([timestamp, m])),
-    mad,
+    mad: mad(everyPointValues),
     visible: false
   };
   return madSerie;
