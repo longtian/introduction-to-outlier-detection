@@ -30,6 +30,8 @@ class App extends React.Component {
     return (
       <div>
         <Chart
+          limit={10}
+          query={'avg:airquality.beijing.pm25;avg:airquality.shanghai.pm25;avg:airquality.hangzhou.pm25;avg:airquality.guangzhou.pm25;avg:airquality.shengzhen.pm25'}
           key={begin}
           pct={pct}
           tolerance={tolerance}

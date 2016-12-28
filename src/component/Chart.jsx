@@ -4,12 +4,12 @@ import { abs } from 'mathjs';
 import { throttle, isNull } from 'underscore';
 import { DBSCAN } from 'density-clustering';
 
-import { fetchJSON, getMadSerie, flat } from '../lib';
+import { fetchJSON, getMadSerie, toSeries, toggleSeriesStyle } from '../lib';
 
 class Chart extends React.Component {
 
   componentDidMount() {
-    window.c = this.chart = new Highcharts.Chart({
+    this.chart = new Highcharts.Chart({
       chart: {
         renderTo: this.container
       },
@@ -20,10 +20,14 @@ class Chart extends React.Component {
         text: ''
       }
     });
-    this.fetch();
+    // 全局 c 变量便于调试
+    window.c = this.chart;
+    // 防止调用太频繁
     this.markOutlierDelayed = throttle((...args) => {
       this.markOutlier(...args);
     }, 100);
+    // 发起请求
+    this.fetch();
   }
 
   componentWillReceiveProps(newProps) {
@@ -41,10 +45,12 @@ class Chart extends React.Component {
 
   fetch() {
     const {
-      begin
+      begin,
+      query,
+      limit
     } = this.props;
     fetchJSON('/v1/query.json', {
-      q: 'avg:airquality.beijing.pm25;avg:airquality.shanghai.pm25;avg:airquality.hangzhou.pm25;avg:airquality.guangzhou.pm25;avg:airquality.shengzhen.pm25',
+      q: query,
       interval: begin / 60 / 1000,
       begin,
       end: Date.now()
@@ -53,18 +59,16 @@ class Chart extends React.Component {
         if (this.isUnmounted) {
           return;
         }
-        const toSeries = (item, i) => (
-          {
-            name: `${i}-${item.metric}`,
-            data: flat(item.pointlist)
-          }
-        );
-        const trimData = res.slice(0, 10).map(toSeries);
-        const madSerie = getMadSerie(trimData);
-        trimData.forEach((serie) => {
+        // 限制结果数量
+        const trimmedData = res
+          .slice(0, limit).map(toSeries);
+        const madSerie = getMadSerie(trimmedData);
+        trimmedData.forEach((serie) => {
           this.chart.addSeries(serie, false);
         });
+        // 添加中间值序列
         this.hMadSerie = this.chart.addSeries(madSerie, false);
+        // 跟着中间值上向浮动
         this.hRangeSerie = this.chart.addSeries({
           data: [],
           type: 'arearange',
@@ -75,6 +79,7 @@ class Chart extends React.Component {
         this.markOutlier();
       }
     ).catch((e) => {
+      this.chart.showLoading(e.message);
       console.error(e); // eslint-disable-line no-console
     });
   }
@@ -89,6 +94,8 @@ class Chart extends React.Component {
         text: method.toUpperCase()
       }
     });
+
+    // 更新 Range
     const mad = this.hMadSerie.userOptions.mad;
     const newRan = this.hMadSerie.userOptions.data.map(([timestamp, m]) => ([
       timestamp, m - (mad * tolerance), m + (mad * tolerance)
@@ -96,87 +103,57 @@ class Chart extends React.Component {
     this.hRangeSerie.update({
       data: newRan
     });
+
+    // 调用对应的算法
     if (method === 'mad') {
       this.markWithMAD(tolerance, pct);
     } else {
       this.markWithDBSCAN(tolerance, pct);
     }
+    this.chart.render();
   }
 
   markWithDBSCAN(tolerance, pct) {
-    const chart = this.chart;
-    const mad = this.hMadSerie.userOptions.mad;
-    const epsilon = mad * tolerance;
-    const outlierCount = {};
     const series = this.chart.series
       .filter(s => s !== this.hRangeSerie)
       .filter(s => s !== this.hMadSerie);
+
+    const mad = this.hMadSerie.userOptions.mad;
+    const epsilon = mad * tolerance;
+    const outlierCount = {};
     this.hMadSerie.yData.forEach((median, index) => {
       const dbscan = new DBSCAN();
       const dataSet = series
         .map(s => [0, s.yData[index]]);
       dbscan.run(dataSet, epsilon, 2);
       dbscan.noise.forEach((i) => {
+        // 忽略 null
         if (!isNull(series[i].yData[index])) {
           outlierCount[i] = outlierCount[i] ? outlierCount[i] + 1 : 1;
         }
       });
     });
-    series.forEach((s, i) => {
-      const availableValue = s.yData.filter(value => !isNull(value)).length;
-      const sOutlierCount = outlierCount[i] || 0;
-      const itemOutlierPercentage = 100 * (sOutlierCount / availableValue);
-      if (itemOutlierPercentage < pct) {
-        if (s.options.dashStyle !== 'Dot') {
-          s.update({
-            dashStyle: 'Dot',
-            color: '#cccccc'
-          }, false);
-        }
-      } else if (s.options.dashStyle !== 'Solid') {
-        s.update({
-          dashStyle: 'Solid',
-          color: 'orange'
-        }, false);
-      }
-    });
-    chart.render();
+    toggleSeriesStyle(outlierCount, pct, series);
   }
 
-
   markWithMAD(tolerance, pct) {
+    const series = this.chart.series
+      .filter(s => s !== this.hRangeSerie)
+      .filter(s => s !== this.hMadSerie);
+
     const mad = this.hMadSerie.userOptions.mad;
-    const madSerieData = this.hMadSerie.yData;
-    this.chart.series.forEach((serie) => {
-      if (serie === this.hMadSerie) {
-        return;
-      }
-      let count = 0;
-      let serieRealLength = 0;
-      serie.yData.forEach((d, i) => {
-        if (!isNull(d)) {
-          serieRealLength++;
-          if (abs(madSerieData[i] - d) > mad * tolerance) {
-            count++;
-          }
+    const median = this.hMadSerie.userOptions.median;
+    const distance = mad * tolerance;
+    const outlierCount = {};
+    series.forEach((serie, i) => {
+      serie.yData.forEach((d, j) => {
+        // 忽略 null
+        if (!isNull(d) && (abs(median - d) > distance)) {
+          outlierCount[i] = outlierCount[i] ? outlierCount[i] + 1 : 1;
         }
       });
-      const itemOutlierPercentage = 100 * (count / serieRealLength);
-      if (itemOutlierPercentage < pct) {
-        if (serie.options.dashStyle !== 'Dot') {
-          serie.update({
-            dashStyle: 'Dot',
-            color: '#cccccc'
-          }, false);
-        }
-      } else if (serie.options.dashStyle !== 'Solid') {
-        serie.update({
-          dashStyle: 'Solid',
-          color: 'orange'
-        }, false);
-      }
     });
-    this.chart.render();
+    toggleSeriesStyle(outlierCount, pct, series);
   }
 
   render() {
@@ -194,7 +171,9 @@ Chart.propTypes = {
   begin: React.PropTypes.number,
   pct: React.PropTypes.number,
   tolerance: React.PropTypes.number,
-  method: React.PropTypes.oneOf(['mad', 'dbscan'])
+  method: React.PropTypes.oneOf(['mad', 'dbscan']),
+  query: React.PropTypes.string,
+  limit: React.PropTypes.number
 };
 
 export default Chart;
