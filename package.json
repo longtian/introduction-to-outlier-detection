@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "prestart": "npm update",
     "start": "webpack-dev-server",
     "test": "jest",
     "eslint": "eslint --ext jsx,js src"

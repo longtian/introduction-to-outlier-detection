@@ -7,9 +7,9 @@ class App extends React.Component {
     super(...args);
     this.state = {
       pct: 25,
-      tolerance: 3,
+      tolerance: 2,
       begin: 86400000,
-      method: 'mad'
+      method: 'dbscan'
     };
   }
 
@@ -34,6 +34,7 @@ class App extends React.Component {
           pct={pct}
           tolerance={tolerance}
           begin={begin}
+          method={method}
         />
         <form>
           <p>
